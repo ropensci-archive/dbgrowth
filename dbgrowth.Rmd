@@ -1,0 +1,101 @@
+## dbgrowth analysis
+
+### Data manipulation
+
+Set working directory, list files available
+
+```{r}
+library('data.table')
+setwd("~/github/ropensci/dbgrowth/data")
+dir()
+```
+
+#### Local files
+
+Read in files
+
+```{r}
+dryad <- read.table("dryadSubmitDates.txt", col.names = 'submitdate')
+bef <- read.table("BEF_Datalast_modified_dump.csv", header = TRUE, sep = ",")
+npn <- read.table("records_per_month.csv", header = TRUE, sep = ",")
+treebase <- read.table("treebase.csv", header = TRUE, sep = ",")
+itis <- read.table("itis.csv", header = TRUE, sep = ",")
+ebird_checklist <- read.table("ebird_checklist_submissions.csv", header = TRUE, sep = ",")
+ebird_observations <- read.table("ebird_observations.csv", header = TRUE, sep = ",")
+col <- read.table("col.csv", header = TRUE, sep = ",")
+opensnp_snps <- fread("opensnp_data/snps.txt")
+opensnp_users <- read.table("opensnp_data/users.txt", header = FALSE, sep = "\t")
+opensnp_genotypes <- read.table("opensnp_data/genotypes.txt", header = FALSE, sep = "\t")
+opensnp_phenotypes <- read.table("opensnp_data/phenotypes.txt", header = FALSE, sep = "\t")
+bhl_titles <- read.delim("bhl_titles.csv", header = TRUE, sep = ",")
+bhl_items <- read.delim("bhl_items.csv", header = TRUE, sep = ",")
+bhl_names <- read.delim("bhl_names.csv", header = TRUE, sep = ",")
+bhl_pages <- read.delim("bhl_pages.csv", header = TRUE, sep = ",")
+gbif_data <- read.delim("gbif_data.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
+gbif_publishers <- read.delim("gbif_publishers.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
+```
+
+#### Neotoma data
+
+From eamil: 
+
+>  You'll note a huge jump in taxa in January 2013, when taxa from the Diatom Paleolimnology Data Cooperative and the FAUNMAP 2 database were added. 
+
+```{r}
+library('httr')
+url_taxa <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Taxa'
+url_datasets <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Datasets'
+url_data <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Data'
+
+taxa <- jsonlite::fromJSON(content(GET(url_taxa), "text"))$data
+datasets <- jsonlite::fromJSON(content(GET(url_datasets), "text"))$data
+data <- jsonlite::fromJSON(content(GET(url_data), "text"))$data
+```
+
+
+#### Theplantlist.org data
+
+This url [http://www.theplantlist.org/1.1/statistics/]() has some stats, but no growth through time
+
+__Ignoring then...__
+
+#### dbSNP data
+
+```{r}
+library('httr')
+library('XML')
+url <- 'http://www.ncbi.nlm.nih.gov/projects/SNP/snp_summary.cgi?view+summary=view+summary&build_id=%s'
+build_ids <- 106:141
+get_dbsnp_data <- function(x){
+  res <- GET(sprintf(url, x))
+  readHTMLTable(sprintf(url, x))
+  
+  ## STILL NEEDS SOME WORK
+}
+```
+
+#### DataCite data
+
+```{r}
+get_datacite <- function(start=1, rows=500){
+  url <- 'http://search.datacite.org/api'
+  args <- list(q='*', fl='uploaded', wt='json', fq='has_metadata:true', rows=rows, start=start)
+  res <- GET(url, query=args)
+  jsonlite::fromJSON(content(res, "text"))$response$docs
+}
+dc_dat <- lapply(seq(1, 10^6, 500), get_datacite)
+dc_dat_df <- rbindlist(dc_dat)
+str(dc_dat_df)
+```
+
+
+### Data viz/analysis
+
+```{r}
+library('dplyr')
+'xxxx'
+```
+
+### Reproduce this
+
+Github gist at [URL](#)
