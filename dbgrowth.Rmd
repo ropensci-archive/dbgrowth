@@ -1,43 +1,39 @@
-## dbgrowth analysis
+dbgrowth analysis
+=================
 
-### Data manipulation
+## Get data
 
-Set working directory, list files available
-
-```{r}
-library('data.table')
-setwd("~/github/ropensci/dbgrowth/data")
-dir()
-```
-
-#### Local files
+### Local files
 
 Read in files
 
 ```{r}
-dryad <- read.table("dryadSubmitDates.txt", col.names = 'submitdate')
-bef <- read.table("BEF_Datalast_modified_dump.csv", header = TRUE, sep = ",")
-npn <- read.table("records_per_month.csv", header = TRUE, sep = ",")
-treebase <- read.table("treebase.csv", header = TRUE, sep = ",")
-itis <- read.table("itis.csv", header = TRUE, sep = ",")
-ebird_checklist <- read.table("ebird_checklist_submissions.csv", header = TRUE, sep = ",")
-ebird_observations <- read.table("ebird_observations.csv", header = TRUE, sep = ",")
-col <- read.table("col.csv", header = TRUE, sep = ",")
-opensnp_snps <- fread("opensnp_data/snps.txt")
-opensnp_users <- read.table("opensnp_data/users.txt", header = FALSE, sep = "\t")
-opensnp_genotypes <- read.table("opensnp_data/genotypes.txt", header = FALSE, sep = "\t")
-opensnp_phenotypes <- read.table("opensnp_data/phenotypes.txt", header = FALSE, sep = "\t")
-bhl_titles <- read.delim("bhl_titles.csv", header = TRUE, sep = ",")
-bhl_items <- read.delim("bhl_items.csv", header = TRUE, sep = ",")
-bhl_names <- read.delim("bhl_names.csv", header = TRUE, sep = ",")
-bhl_pages <- read.delim("bhl_pages.csv", header = TRUE, sep = ",")
-gbif_data <- read.delim("gbif_data.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
-gbif_publishers <- read.delim("gbif_publishers.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
+library('data.table')
+
+dryad <- read.table("data/dryadSubmitDates.txt", col.names = 'submitdate', stringsAsFactors = FALSE)
+bef <- read.table("data/BEF_Datalast_modified_dump.csv", header = TRUE, sep = ",")
+npn <- read.table("data/records_per_month.csv", header = TRUE, sep = ",")
+treebase <- read.table("data/treebase.csv", header = TRUE, sep = ",")
+itis <- read.table("data/itis.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+ebird_checklist <- read.table("data/ebird_checklist_submissions.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+ebird_observations <- read.table("data/ebird_observations.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+col <- read.table("data/col.csv", header = TRUE, sep = ",")
+opensnp_snps <- data.frame(fread("data/opensnp_data/snps.txt"))
+opensnp_users <- read.table("data/opensnp_data/users.txt", header = FALSE, sep = "\t")
+opensnp_genotypes <- read.table("data/opensnp_data/genotypes.txt", header = FALSE, sep = "\t")
+opensnp_phenotypes <- read.table("data/opensnp_data/phenotypes.txt", header = FALSE, sep = "\t")
+bhl_titles <- read.delim("data/bhl_titles.csv", header = TRUE, sep = ",")
+bhl_items <- read.delim("data/bhl_items.csv", header = TRUE, sep = ",")
+bhl_names <- read.delim("data/bhl_names.csv", header = TRUE, sep = ",")
+bhl_pages <- read.delim("data/bhl_pages.csv", header = TRUE, sep = ",")
+gbif_data <- read.delim("data/gbif_data.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
+gbif_publishers <- read.delim("data/gbif_publishers.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
+dcite <- read.csv('data/datacite.csv')
 ```
 
-#### Neotoma data
+### Neotoma data
 
-From eamil: 
+From email: 
 
 >  You'll note a huge jump in taxa in January 2013, when taxa from the Diatom Paleolimnology Data Cooperative and the FAUNMAP 2 database were added. 
 
@@ -47,19 +43,18 @@ url_taxa <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsBy
 url_datasets <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Datasets'
 url_data <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Data'
 
-taxa <- jsonlite::fromJSON(content(GET(url_taxa), "text"))$data
-datasets <- jsonlite::fromJSON(content(GET(url_datasets), "text"))$data
-data <- jsonlite::fromJSON(content(GET(url_data), "text"))$data
+neotoma_taxa <- jsonlite::fromJSON(content(GET(url_taxa), "text"))$data
+neotoma_datasets <- jsonlite::fromJSON(content(GET(url_datasets), "text"))$data
+neotoma_data <- jsonlite::fromJSON(content(GET(url_data), "text"))$data
 ```
 
-
-#### Theplantlist.org data
+### Theplantlist.org data
 
 This url [http://www.theplantlist.org/1.1/statistics/]() has some stats, but no growth through time
 
 __Ignoring then...__
 
-#### dbSNP data
+### dbSNP data
 
 ```{r}
 library('httr')
@@ -101,30 +96,212 @@ yrs <- vapply(build_ids, get_dbsnp_dates, numeric(1))
 dbsnp_all <- data.frame(year=yrs, count=vals, stringsAsFactors = FALSE)
 ```
 
-#### DataCite data
+### Dryad data
 
-```{r}
-# get_datacite <- function(start=1, rows=500){
-#   url <- 'http://search.datacite.org/api'
-#   args <- list(q='*', fl='uploaded', wt='json', fq='has_metadata:true', rows=rows, start=start)
-#   res <- GET(url, query=args)
-#   jsonlite::fromJSON(content(res, "text"))$response$docs
-# }
-# dc_dat <- lapply(seq(1, 10^6, 500), get_datacite)
-# dc_dat_df <- rbindlist(dc_dat)
-# str(dc_dat_df)
+We got some data in a `csv` file via email in October 2013, but it's been a year now, so...
 
-dcite <- read.csv('datacite.csv')
+> Skipping this for now, just use csv file, as can't figure out what are unique datasets.
+
+```{r eval=FALSE, echo=FALSE}
+library('solr')
+url <- "http://datadryad.org/solr/search/select"
+dryad_res <- solr_search(q = "*:*", fl = "dc.date.issued_dt,handle", rows = 50000L, wt="json", base = url)
+dryad_res <- na.omit(dryad_res)
+# http://datadryad.org/solr/search/select/?q=*:*&rows=50000&wt=json&fl=dc.date.issued_dt
 ```
 
-
-### Data viz/analysis
+## Data viz/analysis
 
 ```{r}
 library('dplyr')
-'xxxx'
+# datasets <- list(dryad, bef, npn, treebase, itis, ebird_checklist, ebird_observations, col, opensnp_snps, opensnp_users,opensnp_genotypes, opensnp_phenotypes, bhl_titles, bhl_items, bhl_names, bhl_pages, gbif_data, gbif_publishers, dcite,neotoma_taxa,neotoma_datasets,neotoma_data,dbsnp_all)
+
+datasets2 <- c('dryad', 'bef', 'npn', 'treebase', 'itis', 'ebird_checklist', 'ebird_observations', 'col', 'opensnp_snps', 'opensnp_users','opensnp_genotypes', 'opensnp_phenotypes', 'bhl_titles', 'bhl_items', 'bhl_names', 'bhl_pages', 'gbif_data', 'gbif_publishers', 'dcite', 'neotoma_taxa', 'neotoma_datasets', 'neotoma_data', 'dbsnp_all')
 ```
+
+### Size of open data
+
+```{r}
+calc <- function(x, func=NULL) func(eval(parse(text = x)))
+res <- ldply(sapply(datasets2, calc, func=NROW))
+names(res) <- c("source","value")
+res
+```
+
+### Growth in open data
+
+First, we have to convert all the date-like fields to proper date classes. 
+
+Some functions
+
+```{r}
+add0 <- function(x) if(nchar(x) == 1) paste0("0", x) else x
+yr_mo <- function(x){
+  x <- x[ !x$Year == 0, ]
+  x$date <- ymd(apply(x, 1, function(y) paste(y['Year'], add0(y['Month']), "01", sep = "-")))
+  x
+}
+```
+
+The conversions
+
+```{r}
+dryad$date <- ymd_hms(dryad$submitdate)
+bef$date <- ymd_hms(bef$last.modified)
+npn$date <- ymd(apply(npn, 1, function(x) paste(x['year'], x['month'], "01", sep = "-")))
+treebase$date <- ymd(paste0(treebase$Year, "01-01"))
+itis$date <- myd(sapply(itis$date, function(y) paste0(y, "-01")))
+ebird_observations$date <- as.Date(sapply(ebird_observations[,2], function(x) paste0(paste0(strsplit(x, "/")[[1]], collapse = "-"), "-01")))
+col$date <- ymd(paste0(col$year, "-01-01"))
+opensnp_snps$date <- dmy_hm(gsub("\\.", "-", opensnp_snps[,2]))
+opensnp_users$date <- dmy_hm(gsub("\\.", "-", opensnp_users[,2]))
+opensnp_genotypes$date <- dmy_hm(gsub("\\.", "-", opensnp_genotypes[,2]))
+opensnp_phenotypes$date <- dmy_hm(gsub("\\.", "-", opensnp_phenotypes[,2]))
+bhl_titles <- yr_mo(bhl_titles)
+bhl_items <- yr_mo(bhl_items)
+bhl_names <- yr_mo(bhl_names)
+bhl_pages <- yr_mo(bhl_pages)
+gbif_data$date <- ymd(gbif_data$V1)
+gbif_publishers$date <- ymd(gbif_publishers$V1)
+dcite$date <- ymd_hms(dcite$uploaded)
+neotoma_taxa <- yr_mo(neotoma_taxa)
+neotoma_datasets <- yr_mo(neotoma_datasets)
+neotoma_data <- yr_mo(neotoma_data)
+dbsnp_all$date <- ymd(paste0(dbsnp_all$year, "01-01"))
+```
+
+Visualize, counts by date
+
+```{r}
+sort_count <- function(x){
+  x %>%
+    arrange(date) %>%
+    mutate(count = 1:n())
+}
+
+gp <- function(x){
+  ggplot(x, aes(date, count)) + 
+  geom_line() + 
+  theme_grey(base_size = 18)
+}
+```
+
+Dryad 
+
+```{r}
+dryad %>% sort_count %>% gp
+```
+
+BEF 
+
+```{r}
+bef %>% sort_count %>% gp
+```
+
+OpenSNP
+
+```{r}
+opensnp_genotypes %>% sort_count %>% gp
+opensnp_phenotypes %>% sort_count %>% gp
+opensnp_snps %>% sort_count %>% gp
+opensnp_users %>% sort_count %>% gp
+```
+
+Datacite
+
+```{r}
+dcite %>% sort_count %>% gp
+```
+
+Visualize, counts summarised previously
+
+US National Phenology Network
+
+```{r}
+npn %>% arrange(date) %>% rename(count = Number_Records) %>% gp
+```
+
+TreeBASE
+
+```{r}
+treebase %>% arrange(date) %>% rename(count = New.Trees.Added) %>% gp
+```
+
+ITIS
+
+```{r}
+itis %>% arrange(date) %>% rename(count = total_names) %>% gp
+```
+
+eBird
+
+```{r}
+ebird_observations %>% arrange(date) %>% rename(count = COUNT.OBS_ID.) %>% gp
+```
+
+Catalogue of Life
+
+```{r}
+col %>% arrange(date) %>% rename(count = species) %>% gp
+col %>% arrange(date) %>% rename(count = source_databases) %>% gp
+```
+
+Biodiversity Heritage Library
+
+```{r}
+bhl_titles %>% 
+  arrange(date) %>% 
+  mutate(count = cumsum(Titles)) %>%
+  gp
+bhl_items %>% 
+  arrange(date) %>% 
+  mutate(count = cumsum(Items)) %>%
+  gp
+bhl_pages %>% 
+  arrange(date) %>% 
+  mutate(count = cumsum(Pages)) %>%
+  gp
+bhl_names %>% 
+  arrange(date) %>% 
+  mutate(count = cumsum(Names)) %>%
+  gp
+```
+
+GBIF
+
+```{r}
+gbif_data %>%
+  arrange(date) %>%
+  rename(count = V2) %>%
+  gp + labs(y="Millions of biodiversity records in GBIF")
+gbif_publishers %>%
+  arrange(date) %>%
+  rename(count = V2) %>%
+  gp + labs(y="Number of GBIF data publishers")
+```
+
+Neotoma
+
+```{r}
+neotoma_data %>%
+  arrange(date) %>%
+  rename(count = RunningCount) %>%
+  gp
+neotoma_datasets %>%
+  arrange(date) %>%
+  rename(count = RunningCount) %>%
+  gp
+neotoma_taxa %>%
+  arrange(date) %>%
+  rename(count = RunningCount) %>%
+  gp
+```
+
+### Gaps in open data
+
+This is more of a qualitative judgment, but ...
 
 ### Reproduce this
 
-Github gist at [URL](#)
+* Option 1: If you are comfortable with git, simply clone the [dbgrowth repository](https://github.com/ropensci/dbgrowth) to your machine, uncompress the compressed file, `cd` to the directory, and run `R`. Running R should enter _packrat mode_, which will install packages from within the directory, after which point you can reproduce what we have done above.
+* Option 2: Install the `packrat` R package if you don't have it already. Download the compressed file (a _packrat bundle_), then in R, run `packrat::unbundle("<path to tar.gz>", "<path to put the contents>")`, which will uncompress the file, and install packages, and you're ready to go.
