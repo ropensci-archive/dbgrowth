@@ -200,6 +200,22 @@ Version: 1.95-4.3
 Hash: 158377109f939084a72f240125f821d3
 Requires: bitops
 
+Package: rdpla
+Source: github
+Version: 0.0.2.99
+Hash: 4b144904be08aa85f8f73395430751ba7e4b7de6
+Requires: ggplot2, httr, jsonlite, lubridate, plyr, reshape
+GithubRepo: rdpla
+GithubUsername: ropensci
+GithubRef: master
+GithubSha1: 4b144904be08aa85f8f73395430751ba7e4b7de6
+
+Package: reshape
+Source: CRAN
+Version: 0.8.5
+Hash: 3a8bcdf002df52627d35dfab189711f4
+Requires: plyr
+
 Package: reshape2
 Source: CRAN
 Version: 1.4

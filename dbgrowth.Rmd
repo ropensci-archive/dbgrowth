@@ -1,15 +1,34 @@
 dbgrowth analysis
 =================
 
+```{r echo=FALSE}
+knitr::opts_chunk$set(
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.path = "figure/"
+)
+```
+
 ## Get data
 
-### Local files
-
-Read in files
+Load packages
 
 ```{r}
 library('data.table')
+library('httr')
+library('httr')
+library('XML')
+library('plyr')
+library('lubridate')
+library('ggplot2')
+library('knitr')
+library('dplyr')
+```
 
+Read in local files
+
+```{r}
 dryad <- read.table("data/dryadSubmitDates.txt", col.names = 'submitdate', stringsAsFactors = FALSE)
 bef <- read.table("data/BEF_Datalast_modified_dump.csv", header = TRUE, sep = ",")
 npn <- read.table("data/records_per_month.csv", header = TRUE, sep = ",")
@@ -31,104 +50,30 @@ gbif_publishers <- read.delim("data/gbif_publishers.csv", header = FALSE, sep = 
 dcite <- read.csv('data/datacite.csv')
 ```
 
-### Neotoma data
+Collect data from Neotoma and dbSNP. Executed and read in without echoing code.
 
-From email: 
-
->  You'll note a huge jump in taxa in January 2013, when taxa from the Diatom Paleolimnology Data Cooperative and the FAUNMAP 2 database were added. 
-
-```{r}
-library('httr')
-url_taxa <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Taxa'
-url_datasets <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Datasets'
-url_data <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Data'
-
-neotoma_taxa <- jsonlite::fromJSON(content(GET(url_taxa), "text"))$data
-neotoma_datasets <- jsonlite::fromJSON(content(GET(url_datasets), "text"))$data
-neotoma_data <- jsonlite::fromJSON(content(GET(url_data), "text"))$data
+```{r child="neotoma_dbsnp.Rmd", echo=FALSE}
+print("See neotoma_dbsnp.Rmd")
 ```
 
-### Theplantlist.org data
-
-This url [http://www.theplantlist.org/1.1/statistics/]() has some stats, but no growth through time
-
-__Ignoring then...__
-
-### dbSNP data
+Define vector of dataset names
 
 ```{r}
-library('httr')
-library('XML')
-library('plyr')
-library('lubridate')
-url <- 'http://www.ncbi.nlm.nih.gov/projects/SNP/snp_summary.cgi?view+summary=view+summary&build_id=%s'
-build_ids <- 106:141
-get_dbsnp_data <- function(x){
-  res <- GET(sprintf(url, x))
-  tables <- readHTMLTable(sprintf(url, x))
-  names(tables) <- NULL
-  use <- 
-    compact(lapply(tables, function(x){
-      tbn <- names(x)
-      if(all(c("Organism","dbSNPBuild","GenomeBuild") %in% tbn)) x else NULL
-    }))[[1]]
-  names(use) <- c("organism","dbsnpbuild","genomebuild",'no_sub','no_refsnpclusters','no_refsnpingene','no_subswithgenotype','no_subswithfreq')
-  use
-}
-dbsnpdat <- lapply(build_ids, get_dbsnp_data)
-names(dbsnpdat) <- build_ids
-dbsnpdat_df <- ldply(dbsnpdat)
-head(dbsnpdat_df)
-vals <- as.character(dbsnpdat_df[ grepl("Total:", dbsnpdat_df$organism), "no_sub" ])
-vals <- as.numeric(gsub(",", "", vals))
-
-get_dbsnp_dates <- function(x){
-  res <- GET(sprintf(url, x))
-  tables <- readHTMLTable(sprintf(url, x))
-  names(tables) <- NULL
-  year(mdy(na.omit(as.character(compact(lapply(tables, function(x){
-      tbn <- names(x)
-      if(all(c("Component","Date available") %in% tbn)) x else NULL
-  }))[[1]]$`Date available`)))[1])
-}
-yrs <- vapply(build_ids, get_dbsnp_dates, numeric(1))
-
-dbsnp_all <- data.frame(year=yrs, count=vals, stringsAsFactors = FALSE)
-```
-
-### Dryad data
-
-We got some data in a `csv` file via email in October 2013, but it's been a year now, so...
-
-> Skipping this for now, just use csv file, as can't figure out what are unique datasets.
-
-```{r eval=FALSE, echo=FALSE}
-library('solr')
-url <- "http://datadryad.org/solr/search/select"
-dryad_res <- solr_search(q = "*:*", fl = "dc.date.issued_dt,handle", rows = 50000L, wt="json", base = url)
-dryad_res <- na.omit(dryad_res)
-# http://datadryad.org/solr/search/select/?q=*:*&rows=50000&wt=json&fl=dc.date.issued_dt
-```
-
-## Data viz/analysis
-
-```{r}
-library('dplyr')
-# datasets <- list(dryad, bef, npn, treebase, itis, ebird_checklist, ebird_observations, col, opensnp_snps, opensnp_users,opensnp_genotypes, opensnp_phenotypes, bhl_titles, bhl_items, bhl_names, bhl_pages, gbif_data, gbif_publishers, dcite,neotoma_taxa,neotoma_datasets,neotoma_data,dbsnp_all)
-
 datasets2 <- c('dryad', 'bef', 'npn', 'treebase', 'itis', 'ebird_checklist', 'ebird_observations', 'col', 'opensnp_snps', 'opensnp_users','opensnp_genotypes', 'opensnp_phenotypes', 'bhl_titles', 'bhl_items', 'bhl_names', 'bhl_pages', 'gbif_data', 'gbif_publishers', 'dcite', 'neotoma_taxa', 'neotoma_datasets', 'neotoma_data', 'dbsnp_all')
 ```
 
-### Size of open data
+## Size of open data
 
 ```{r}
 calc <- function(x, func=NULL) func(eval(parse(text = x)))
 res <- ldply(sapply(datasets2, calc, func=NROW))
 names(res) <- c("source","value")
-res
+res %>%
+  arrange(desc(value)) %>%
+  kable
 ```
 
-### Growth in open data
+## Growth in open data
 
 First, we have to convert all the date-like fields to proper date classes. 
 
@@ -141,9 +86,19 @@ yr_mo <- function(x){
   x$date <- ymd(apply(x, 1, function(y) paste(y['Year'], add0(y['Month']), "01", sep = "-")))
   x
 }
+sort_count <- function(x){
+  x %>%
+    arrange(date) %>%
+    mutate(count = 1:n())
+}
+gp <- function(x){
+  ggplot(x, aes(date, count)) + 
+  geom_line() + 
+  theme_grey(base_size = 18)
+}
 ```
 
-The conversions
+Date conversions
 
 ```{r}
 dryad$date <- ymd_hms(dryad$submitdate)
@@ -170,138 +125,129 @@ neotoma_data <- yr_mo(neotoma_data)
 dbsnp_all$date <- ymd(paste0(dbsnp_all$year, "01-01"))
 ```
 
-Visualize, counts by date
+### Visualize, counts by date
 
-```{r}
-sort_count <- function(x){
-  x %>%
-    arrange(date) %>%
-    mutate(count = 1:n())
-}
-
-gp <- function(x){
-  ggplot(x, aes(date, count)) + 
-  geom_line() + 
-  theme_grey(base_size = 18)
-}
-```
-
-Dryad 
+#### Dryad 
 
 ```{r}
 dryad %>% sort_count %>% gp
 ```
 
-BEF 
+#### BEF 
 
 ```{r}
 bef %>% sort_count %>% gp
 ```
 
-OpenSNP
+#### OpenSNP
 
 ```{r}
-opensnp_genotypes %>% sort_count %>% gp
-opensnp_phenotypes %>% sort_count %>% gp
-opensnp_snps %>% sort_count %>% gp
-opensnp_users %>% sort_count %>% gp
+opensnp_genotypes <- opensnp_genotypes %>% mutate(type = "genotyptes") %>% sort_count
+opensnp_phenotypes <- opensnp_phenotypes %>% mutate(type = "phenotyptes") %>% sort_count
+opensnp_snps <- opensnp_snps %>% mutate(type = "snps") %>% sort_count
+opensnp_users <- opensnp_users %>% mutate(type = "users") %>% sort_count
+os_all <- rbind(opensnp_genotypes, opensnp_phenotypes, opensnp_snps, opensnp_users)
+os_all %>%
+  ggplot(aes(date, log10(count), color=type)) + 
+    geom_line() + 
+    theme_grey(base_size = 18)
 ```
 
-Datacite
+#### Datacite
 
 ```{r}
 dcite %>% sort_count %>% gp
 ```
 
-Visualize, counts summarised previously
+### Visualize, counts summarised previously by data provider
 
-US National Phenology Network
+#### US National Phenology Network
 
 ```{r}
 npn %>% arrange(date) %>% rename(count = Number_Records) %>% gp
 ```
 
-TreeBASE
+#### TreeBASE
 
 ```{r}
 treebase %>% arrange(date) %>% rename(count = New.Trees.Added) %>% gp
 ```
 
-ITIS
+#### ITIS
 
 ```{r}
 itis %>% arrange(date) %>% rename(count = total_names) %>% gp
 ```
 
-eBird
+#### eBird
 
 ```{r}
 ebird_observations %>% arrange(date) %>% rename(count = COUNT.OBS_ID.) %>% gp
 ```
 
-Catalogue of Life
+#### Catalogue of Life
+
+Number of species
 
 ```{r}
 col %>% arrange(date) %>% rename(count = species) %>% gp
+```
+
+Number of data sources
+
+```{r}
 col %>% arrange(date) %>% rename(count = source_databases) %>% gp
 ```
 
-Biodiversity Heritage Library
+#### Biodiversity Heritage Library
 
 ```{r}
-bhl_titles %>% 
-  arrange(date) %>% 
-  mutate(count = cumsum(Titles)) %>%
-  gp
-bhl_items %>% 
-  arrange(date) %>% 
-  mutate(count = cumsum(Items)) %>%
-  gp
-bhl_pages %>% 
-  arrange(date) %>% 
-  mutate(count = cumsum(Pages)) %>%
-  gp
-bhl_names %>% 
-  arrange(date) %>% 
-  mutate(count = cumsum(Names)) %>%
-  gp
+bhl_titles <- bhl_titles %>% mutate(type = "titles") %>% arrange(date) %>% mutate(count = cumsum(Titles))
+bhl_items <- bhl_items %>% mutate(type = "items") %>% arrange(date) %>%  mutate(count = cumsum(Items))
+bhl_pages <- bhl_pages %>% mutate(type = "pages") %>% arrange(date) %>%  mutate(count = cumsum(Pages))
+bhl_names <- bhl_names %>% mutate(type = "names") %>% arrange(date) %>%  mutate(count = cumsum(Names))
+bhl_all <- rbind(bhl_titles[,-c(1:4)], bhl_items[,-c(1:4)], bhl_pages[,-c(1:4)], bhl_names[,-c(1:4)])
+bhl_all %>%
+  ggplot(aes(date, count, color=type)) + 
+    geom_line() + 
+    theme_grey(base_size = 18)
 ```
 
-GBIF
+#### GBIF
+
+Number of records
 
 ```{r}
 gbif_data %>%
   arrange(date) %>%
   rename(count = V2) %>%
   gp + labs(y="Millions of biodiversity records in GBIF")
+```
+
+Number of data publishers
+
+```{r}
 gbif_publishers %>%
   arrange(date) %>%
   rename(count = V2) %>%
   gp + labs(y="Number of GBIF data publishers")
 ```
 
-Neotoma
+#### Neotoma
 
 ```{r}
-neotoma_data %>%
-  arrange(date) %>%
+rbind(neotoma_data %>% mutate(type = "data") %>% arrange(date),
+      neotoma_datasets %>% mutate(type = "datasets") %>% arrange(date),
+      neotoma_taxa %>% mutate(type = "taxa") %>% arrange(date)) %>%
   rename(count = RunningCount) %>%
-  gp
-neotoma_datasets %>%
-  arrange(date) %>%
-  rename(count = RunningCount) %>%
-  gp
-neotoma_taxa %>%
-  arrange(date) %>%
-  rename(count = RunningCount) %>%
-  gp
+  gp + facet_grid(type ~ ., scales="free")
 ```
 
-### Gaps in open data
+## Gaps in open data
 
 This is more of a qualitative judgment, but ...
 
-### Reproduce this
+## Reproduce this
 
 * Option 1: If you are comfortable with git, simply clone the [dbgrowth repository](https://github.com/ropensci/dbgrowth) to your machine, uncompress the compressed file, `cd` to the directory, and run `R`. Running R should enter _packrat mode_, which will install packages from within the directory, after which point you can reproduce what we have done above.
 * Option 2: Install the `packrat` R package if you don't have it already. Download the compressed file (a _packrat bundle_), then in R, run `packrat::unbundle("<path to tar.gz>", "<path to put the contents>")`, which will uncompress the file, and install packages, and you're ready to go.

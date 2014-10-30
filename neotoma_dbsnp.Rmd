@@ -1,0 +1,44 @@
+```{r neotoma}
+url_taxa <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Taxa'
+url_datasets <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Datasets'
+url_data <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Data'
+
+neotoma_taxa <- jsonlite::fromJSON(content(GET(url_taxa), "text"))$data
+neotoma_datasets <- jsonlite::fromJSON(content(GET(url_datasets), "text"))$data
+neotoma_data <- jsonlite::fromJSON(content(GET(url_data), "text"))$data
+```
+
+```{r dbsnp}
+url <- 'http://www.ncbi.nlm.nih.gov/projects/SNP/snp_summary.cgi?view+summary=view+summary&build_id=%s'
+build_ids <- 106:141
+get_dbsnp_data <- function(x){
+  res <- GET(sprintf(url, x))
+  tables <- readHTMLTable(sprintf(url, x))
+  names(tables) <- NULL
+  use <- 
+    compact(lapply(tables, function(x){
+      tbn <- names(x)
+      if(all(c("Organism","dbSNPBuild","GenomeBuild") %in% tbn)) x else NULL
+    }))[[1]]
+  names(use) <- c("organism","dbsnpbuild","genomebuild",'no_sub','no_refsnpclusters','no_refsnpingene','no_subswithgenotype','no_subswithfreq')
+  use
+}
+dbsnpdat <- lapply(build_ids, get_dbsnp_data)
+names(dbsnpdat) <- build_ids
+dbsnpdat_df <- ldply(dbsnpdat)
+vals <- as.character(dbsnpdat_df[ grepl("Total:", dbsnpdat_df$organism), "no_sub" ])
+vals <- as.numeric(gsub(",", "", vals))
+
+get_dbsnp_dates <- function(x){
+  res <- GET(sprintf(url, x))
+  tables <- readHTMLTable(sprintf(url, x))
+  names(tables) <- NULL
+  year(mdy(na.omit(as.character(compact(lapply(tables, function(x){
+    tbn <- names(x)
+    if(all(c("Component","Date available") %in% tbn)) x else NULL
+  }))[[1]]$`Date available`)))[1])
+}
+yrs <- vapply(build_ids, get_dbsnp_dates, numeric(1))
+
+dbsnp_all <- data.frame(year=yrs, count=vals, stringsAsFactors = FALSE)
+```
