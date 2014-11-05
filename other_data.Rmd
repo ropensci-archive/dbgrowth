@@ -1,0 +1,20 @@
+```{r neotoma}
+url_taxa <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Taxa'
+url_datasets <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Datasets'
+url_data <- 'https://tilia.neotomadb.org/Retrieve/?method=GetTableRecordCountsByMonth&TABLENAME=Data'
+
+neotoma_taxa <- jsonlite::fromJSON(content(GET(url_taxa), "text"))$data
+neotoma_datasets <- jsonlite::fromJSON(content(GET(url_datasets), "text"))$data
+neotoma_data <- jsonlite::fromJSON(content(GET(url_data), "text"))$data
+```
+
+```{r plos}
+plos_jrnls <- facetplos(q='*:*', fq='doc_type:full', facet.field='cross_published_journal_key', key = "key", verbose=FALSE)
+plos_jrnls <- setNames(plos_jrnls$facet_fields$cross_published_journal_key, c('date','articles'))
+plos_jrnls$articles <- as.numeric(plos_jrnls$articles)
+
+res <- facetplos(q='*:*', fq='doc_type:full', facet.range='publication_date', facet.range.start='NOW/YEAR-12YEAR', facet.range.end='NOW/YEAR+1YEAR', facet.range.gap='+1YEAR', key = "key", verbose=FALSE)
+plos_years <- setNames(res$facet_ranges$publication_date, c('date','articles'))
+plos_years$date <- as.Date(plos_years$date)
+plos_years$articles <- as.numeric(plos_years$articles)
+```

@@ -1,0 +1,10 @@
+base
+data.table
+dplyr
+ggplot2
+httr
+knitr
+lubridate
+plyr
+rplos
+XML

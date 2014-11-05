@@ -1,179 +1,210 @@
-dbgrowth analysis
-=================
+---
+name: open-data-growth
+layout: post
+title: Growth of open data in biology
+date: 2014-11-05
+authors: 
+  - name: Scott Chamberlain
+tags:
+- R
+- data
+---
 
 
+
+## Why open data growth
+
+At rOpenSci we try to make it easier for people to use open data, and contribute open data to the community. The question often arises: How much open data do we have? Another angle on this topic is: How much is open data growing?
+
+We work with dozens of data sources in rOpenSci. We asked many of them to share numbers on the amount of data they have, and if possible, growth through time of their data holdings. Many of our partners came through with some data. Note that the below is biased towards those data sources we were able to get data from. In addition, note that much of the data we use below was from fall of 2013 (last year) - so the below is based on somewhat old data, but surely the patterns are likely the same.
+
+We collated data from the different sources, and made some pretty graphs using the data. Here's what we learned:
 
 ## Get data
 
-Load packages
-
-
-```r
-library('data.table')
-library('httr')
-library('httr')
-library('XML')
-library('plyr')
-library('lubridate')
-library('ggplot2')
-library('knitr')
-library('dplyr')
-```
-
-Read in local files
-
-
-```r
-dryad <- read.table("data/dryadSubmitDates.txt", col.names = 'submitdate', stringsAsFactors = FALSE)
-bef <- read.table("data/BEF_Datalast_modified_dump.csv", header = TRUE, sep = ",")
-npn <- read.table("data/records_per_month.csv", header = TRUE, sep = ",")
-treebase <- read.table("data/treebase.csv", header = TRUE, sep = ",")
-itis <- read.table("data/itis.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
-ebird_checklist <- read.table("data/ebird_checklist_submissions.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
-ebird_observations <- read.table("data/ebird_observations.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
-col <- read.table("data/col.csv", header = TRUE, sep = ",")
-opensnp_snps <- data.frame(fread("data/opensnp_data/snps.txt"))
-opensnp_users <- read.table("data/opensnp_data/users.txt", header = FALSE, sep = "\t")
-opensnp_genotypes <- read.table("data/opensnp_data/genotypes.txt", header = FALSE, sep = "\t")
-opensnp_phenotypes <- read.table("data/opensnp_data/phenotypes.txt", header = FALSE, sep = "\t")
-bhl_titles <- read.delim("data/bhl_titles.csv", header = TRUE, sep = ",")
-bhl_items <- read.delim("data/bhl_items.csv", header = TRUE, sep = ",")
-bhl_names <- read.delim("data/bhl_names.csv", header = TRUE, sep = ",")
-bhl_pages <- read.delim("data/bhl_pages.csv", header = TRUE, sep = ",")
-gbif_data <- read.delim("data/gbif_data.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
-gbif_publishers <- read.delim("data/gbif_publishers.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
-dcite <- read.csv('data/datacite.csv')
-```
-
-Collect data from Neotoma and dbSNP. Executed and read in without echoing code.
+The code here is hidden for your sanity - see [the file][thecode] for the code and to run this yourself.
 
 
 
 
 
 
-Define vector of dataset names
 
 
-```r
-datasets2 <- c('dryad', 'bef', 'npn', 'treebase', 'itis', 'ebird_checklist', 'ebird_observations', 'col', 'opensnp_snps', 'opensnp_users','opensnp_genotypes', 'opensnp_phenotypes', 'bhl_titles', 'bhl_items', 'bhl_names', 'bhl_pages', 'gbif_data', 'gbif_publishers', 'dcite', 'neotoma_taxa', 'neotoma_datasets', 'neotoma_data', 'dbsnp_all')
-```
+
 
 ## Size of open data
 
+Of the data sources we have data for, how much data is there? The expression of size of data is somewhat different for different sources, so the below is a bit heterogeous, but nonetheless coveys that there is a lot of open data.
+
+
+
+
+
 
 ```r
-calc <- function(x, func=NULL) func(eval(parse(text = x)))
-res <- ldply(sapply(datasets2, calc, func=NROW))
-names(res) <- c("source","value")
-res %>%
+rbind(df1, df2) %>%
+  mutate(
+    type = c('Phenology records','Phylogenetic trees','Taxonomic names','Checklist records','Observations','Taxonomic names','Source databases','Titles','Items','Names','Pages','Species occurrence records','Data publishers','Taxonomic names','Data records','Datasets','Articles','Data packages','SNPs','Users','Genotypes','Data records'),
+    source = c('NPN','Treebase','ITIS','eBird','eBird','COL','COL','BHL','BHL','BHL','BHL','GBIF','GBIF','Neotoma','Neotoma','Neotoma','PLOS','Dryad','OpenSNP','OpenSNP','OpenSNP','DataCite')
+  ) %>%
   arrange(desc(value)) %>%
-  kable
+  kable(format = "html")
 ```
 
-
-
-|source             |   value|
-|:------------------|-------:|
-|opensnp_snps       | 2140939|
-|dcite              | 1000000|
-|dryad              |    4186|
-|bhl_names          |    2920|
-|bhl_pages          |    1624|
-|bhl_items          |    1619|
-|bhl_titles         |    1485|
-|opensnp_users      |    1230|
-|opensnp_genotypes  |     589|
-|opensnp_phenotypes |     179|
-|ebird_checklist    |     142|
-|ebird_observations |      79|
-|bef                |      66|
-|npn                |      56|
-|gbif_publishers    |      47|
-|gbif_data          |      39|
-|itis               |      37|
-|dbsnp_all          |      36|
-|treebase           |      33|
-|neotoma_taxa       |      31|
-|col                |      13|
-|neotoma_datasets   |      12|
-|neotoma_data       |      12|
+<table>
+ <thead>
+  <tr>
+   <th style="text-align:left;"> source </th>
+   <th style="text-align:right;"> value </th>
+   <th style="text-align:left;"> type </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:left;"> GBIF </td>
+   <td style="text-align:right;"> 420222471 </td>
+   <td style="text-align:left;"> Species occurrence records </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> BHL </td>
+   <td style="text-align:right;"> 155891133 </td>
+   <td style="text-align:left;"> Names </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> BHL </td>
+   <td style="text-align:right;"> 43968949 </td>
+   <td style="text-align:left;"> Pages </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> DataCite </td>
+   <td style="text-align:right;"> 3618096 </td>
+   <td style="text-align:left;"> Data records </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> eBird </td>
+   <td style="text-align:right;"> 2923886 </td>
+   <td style="text-align:left;"> Observations </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> NPN </td>
+   <td style="text-align:right;"> 2537095 </td>
+   <td style="text-align:left;"> Phenology records </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Neotoma </td>
+   <td style="text-align:right;"> 2200221 </td>
+   <td style="text-align:left;"> Data records </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> OpenSNP </td>
+   <td style="text-align:right;"> 2140939 </td>
+   <td style="text-align:left;"> SNPs </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> COL </td>
+   <td style="text-align:right;"> 1352112 </td>
+   <td style="text-align:left;"> Taxonomic names </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ITIS </td>
+   <td style="text-align:right;"> 624282 </td>
+   <td style="text-align:left;"> Taxonomic names </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> eBird </td>
+   <td style="text-align:right;"> 205970 </td>
+   <td style="text-align:left;"> Checklist records </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> BHL </td>
+   <td style="text-align:right;"> 139561 </td>
+   <td style="text-align:left;"> Items </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> PLOS </td>
+   <td style="text-align:right;"> 136330 </td>
+   <td style="text-align:left;"> Articles </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> BHL </td>
+   <td style="text-align:right;"> 77258 </td>
+   <td style="text-align:left;"> Titles </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Neotoma </td>
+   <td style="text-align:right;"> 20115 </td>
+   <td style="text-align:left;"> Taxonomic names </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Neotoma </td>
+   <td style="text-align:right;"> 11588 </td>
+   <td style="text-align:left;"> Datasets </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Dryad </td>
+   <td style="text-align:right;"> 4186 </td>
+   <td style="text-align:left;"> Data packages </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Treebase </td>
+   <td style="text-align:right;"> 1515 </td>
+   <td style="text-align:left;"> Phylogenetic trees </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> OpenSNP </td>
+   <td style="text-align:right;"> 1230 </td>
+   <td style="text-align:left;"> Users </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> OpenSNP </td>
+   <td style="text-align:right;"> 589 </td>
+   <td style="text-align:left;"> Genotypes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> GBIF </td>
+   <td style="text-align:right;"> 578 </td>
+   <td style="text-align:left;"> Data publishers </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> COL </td>
+   <td style="text-align:right;"> 132 </td>
+   <td style="text-align:left;"> Source databases </td>
+  </tr>
+</tbody>
+</table>
 
 ## Growth in open data
 
-First, we have to convert all the date-like fields to proper date classes. 
-
-Some functions
+First, we have to convert all the date-like fields to proper date classes. The work is not shown - look at [the code][thecode] if you want the details.
 
 
-```r
-add0 <- function(x) if(nchar(x) == 1) paste0("0", x) else x
-yr_mo <- function(x){
-  x <- x[ !x$Year == 0, ]
-  x$date <- ymd(apply(x, 1, function(y) paste(y['Year'], add0(y['Month']), "01", sep = "-")))
-  x
-}
-sort_count <- function(x){
-  x %>%
-    arrange(date) %>%
-    mutate(count = 1:n())
-}
-gp <- function(x){
-  ggplot(x, aes(date, count)) + 
-  geom_line() + 
-  theme_grey(base_size = 18)
-}
-```
-
-Date conversions
 
 
-```r
-dryad$date <- ymd_hms(dryad$submitdate)
-bef$date <- ymd_hms(bef$last.modified)
-npn$date <- ymd(apply(npn, 1, function(x) paste(x['year'], x['month'], "01", sep = "-")))
-treebase$date <- ymd(paste0(treebase$Year, "01-01"))
-itis$date <- myd(sapply(itis$date, function(y) paste0(y, "-01")))
-ebird_observations$date <- as.Date(sapply(ebird_observations[,2], function(x) paste0(paste0(strsplit(x, "/")[[1]], collapse = "-"), "-01")))
-col$date <- ymd(paste0(col$year, "-01-01"))
-opensnp_snps$date <- dmy_hm(gsub("\\.", "-", opensnp_snps[,2]))
-opensnp_users$date <- dmy_hm(gsub("\\.", "-", opensnp_users[,2]))
-opensnp_genotypes$date <- dmy_hm(gsub("\\.", "-", opensnp_genotypes[,2]))
-opensnp_phenotypes$date <- dmy_hm(gsub("\\.", "-", opensnp_phenotypes[,2]))
-bhl_titles <- yr_mo(bhl_titles)
-bhl_items <- yr_mo(bhl_items)
-bhl_names <- yr_mo(bhl_names)
-bhl_pages <- yr_mo(bhl_pages)
-gbif_data$date <- ymd(gbif_data$V1)
-gbif_publishers$date <- ymd(gbif_publishers$V1)
-dcite$date <- ymd_hms(dcite$uploaded)
-neotoma_taxa <- yr_mo(neotoma_taxa)
-neotoma_datasets <- yr_mo(neotoma_datasets)
-neotoma_data <- yr_mo(neotoma_data)
-dbsnp_all$date <- ymd(paste0(dbsnp_all$year, "01-01"))
-```
 
-### Visualize, counts by date
 
-#### Dryad 
+## Run down of each data source
+
+### Dryad
+
+* Website: http://datadryad.org/
+* R package: `rdryad`
+
+Dryad is a repository of datasets associated with published papers. We do have an R package on CRAN (`rdryad`), but it is waiting on an update for the new API services being built by the Dryad folks. We did recently add in access to their Solr endpoint - [check it out](https://github.com/ropensci/rdryad/blob/master/R/dryad_solr.r#L8-L41).
 
 
 ```r
 dryad %>% sort_count %>% gp
 ```
 
-![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9-1.png) 
+![plot of chunk unnamed-chunk-7](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-7-1.png) 
 
-#### BEF 
+### OpenSNP
 
+* Website: https://opensnp.org/
+* R package: `rsnps`
 
-```r
-bef %>% sort_count %>% gp
-```
-
-![plot of chunk unnamed-chunk-10](figure/unnamed-chunk-10-1.png) 
-
-#### OpenSNP
+OpenSNP is a collator of SNP datasets that individuals donate to the site/database. They're an awesome group, and they even won the PLOS/Mendeley code contest a few years back. 
 
 
 ```r
@@ -185,79 +216,131 @@ os_all <- rbind(opensnp_genotypes, opensnp_phenotypes, opensnp_snps, opensnp_use
 os_all %>%
   ggplot(aes(date, log10(count), color=type)) + 
     geom_line() + 
-    theme_grey(base_size = 18)
+    theme_grey(base_size = 18) + 
+    theme(legend.position = "top")
 ```
 
-![plot of chunk unnamed-chunk-11](figure/unnamed-chunk-11-1.png) 
+![plot of chunk unnamed-chunk-8](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-8-1.png) 
 
-#### Datacite
+### Datacite
+
+* Website: https://www.datacite.org/
+* R package: `rdatacite`
+
+DataCite mints DOIs for datasets, and holds metadata for those datasets provided by data publishers. They have 
 
 
 ```r
 dcite %>% sort_count %>% gp
 ```
 
-![plot of chunk unnamed-chunk-12](figure/unnamed-chunk-12-1.png) 
+![plot of chunk unnamed-chunk-9](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-9-1.png) 
 
-### Visualize, counts summarised previously by data provider
+### US National Phenology Network (USNPN or NPN)
 
-#### US National Phenology Network
+* Website: https://www.usanpn.org/
+* R package: `rnpn`
+
+The US National Phenology Network is a project under the USGS. They collect phenology observations across both plants and animals. 
 
 
 ```r
-npn %>% arrange(date) %>% rename(count = Number_Records) %>% gp
+npn %>% arrange(date) %>% mutate(count = cumsum(Number_Records)) %>% gp
 ```
 
-![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13-1.png) 
+![plot of chunk unnamed-chunk-10](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-10-1.png) 
 
-#### TreeBASE
+### TreeBASE
+
+* Website: http://treebase.org/
+* R package: `treebase`
+
+TreeBASE is a database of phylogenetic trees, had a total of 1515 trees as of 2013, and has been growing at a good pace.
 
 
 ```r
 treebase %>% arrange(date) %>% rename(count = New.Trees.Added) %>% gp
 ```
 
-![plot of chunk unnamed-chunk-14](figure/unnamed-chunk-14-1.png) 
+![plot of chunk unnamed-chunk-11](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-11-1.png) 
 
-#### ITIS
+### Integrated Taxonomic Information Service (ITIS)
+
+* Website: http://www.itis.gov/
+* R package: `taxize`
+
+The ITIS database is under the USGS, and holds taxonomic names for mostly North American species. This dataset is interesting, because data goes back to 1977, when they had 16000 names. As of Aug 2013 they had 624282 names.
 
 
 ```r
 itis %>% arrange(date) %>% rename(count = total_names) %>% gp
 ```
 
-![plot of chunk unnamed-chunk-15](figure/unnamed-chunk-15-1.png) 
+![plot of chunk unnamed-chunk-12](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-12-1.png) 
 
-#### eBird
+### eBird
+
+* Website: http://www.catalogueoflife.org/
+* R package: `taxize`
+
+eBird is a database of bird occurence records. They don't give access to all the data they have, but some recent data. Data growth goes up and down through time because we don't have access to all data on each data request, but the overall trend is increasing.
 
 
 ```r
-ebird_observations %>% arrange(date) %>% rename(count = COUNT.OBS_ID.) %>% gp
+ebird_observations %>% arrange(date) %>% mutate(count = cumsum(COUNT.OBS_ID.)) %>% gp
 ```
 
-![plot of chunk unnamed-chunk-16](figure/unnamed-chunk-16-1.png) 
+![plot of chunk unnamed-chunk-13](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-13-1.png) 
 
-#### Catalogue of Life
+### Catalogue of Life (COL)
 
-Number of species
+* Website: https://www.datacite.org/
+* R package: `rdatacite`
+
+COL is a database of taxonomic names, similar to ITIS, uBio, or Tropicos. The number of species (1352112) has continually increased (the slight level off is because we got data in Oct last year before the year was over), but number of data sources (1352112) was still growing as of 2013.
+
+__Number of species__
 
 
 ```r
 col %>% arrange(date) %>% rename(count = species) %>% gp
 ```
 
-![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-17-1.png) 
+![plot of chunk unnamed-chunk-14](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-14-1.png) 
 
-Number of data sources
+__Number of data sources__
 
 
 ```r
 col %>% arrange(date) %>% rename(count = source_databases) %>% gp
 ```
 
-![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18-1.png) 
+![plot of chunk unnamed-chunk-15](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-15-1.png) 
 
-#### Biodiversity Heritage Library
+### Public Library of Science (PLOS)
+
+* Website: http://www.plos.org/
+* R package: `rplos`, `fulltext`
+
+PLOS has had tremendous growth, with a very steep hockey stick growth curve. This year (2014) is left out because the year is not over yet.
+
+
+```r
+plos_years %>% 
+  arrange(date) %>% 
+  filter(date < as.Date("2014-01-01")) %>% 
+  mutate(count = cumsum(articles)) %>% 
+  gp
+```
+
+![plot of chunk unnamed-chunk-16](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-16-1.png) 
+
+### Biodiversity Heritage Library (BHL)
+
+* Website: http://www.biodiversitylibrary.org/
+* R package: `rbhl`
+
+BHL has grown tremendously, with 155891133 names, 43650663 pages, 139003 items, and 77169 titles.
 
 
 ```r
@@ -267,16 +350,22 @@ bhl_pages <- bhl_pages %>% mutate(type = "pages") %>% arrange(date) %>%  mutate(
 bhl_names <- bhl_names %>% mutate(type = "names") %>% arrange(date) %>%  mutate(count = cumsum(Names))
 bhl_all <- rbind(bhl_titles[,-c(1:4)], bhl_items[,-c(1:4)], bhl_pages[,-c(1:4)], bhl_names[,-c(1:4)])
 bhl_all %>%
-  ggplot(aes(date, count, color=type)) + 
-    geom_line() + 
-    theme_grey(base_size = 18)
+  ggplot(aes(date, count)) + 
+    geom_line(size=3) + 
+    theme_grey(base_size = 18) + 
+    facet_wrap(~ type, scales = "free")
 ```
 
-![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19-1.png) 
+![plot of chunk unnamed-chunk-17](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-17-1.png) 
 
-#### GBIF
+### Global Biodiversity Information Facility (GBIF)
 
-Number of records
+* Website: http://www.gbif.org/
+* R package: `rgbif`, `spocc`
+
+GBIF is the largest warehouse of biodiversity occurrence records, pulling in data from 578, and 420 million occurrence records as of Oct. 2013. Growth through time has been dramatic.
+
+__Number of records__
 
 
 ```r
@@ -286,9 +375,9 @@ gbif_data %>%
   gp + labs(y="Millions of biodiversity records in GBIF")
 ```
 
-![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20-1.png) 
+![plot of chunk unnamed-chunk-18](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-18-1.png) 
 
-Number of data publishers
+__Number of data publishers__
 
 
 ```r
@@ -298,9 +387,14 @@ gbif_publishers %>%
   gp + labs(y="Number of GBIF data publishers")
 ```
 
-![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-21-1.png) 
+![plot of chunk unnamed-chunk-19](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-19-1.png) 
 
-#### Neotoma
+### Neotoma
+
+* Website: http://www.neotomadb.org/
+* R package: `neotoma`
+
+The Neotoma database holds paleoecology records of various kinds, including pollen and fossil records. The R package `neotoma` allows access to data from Neotoma.  Data and datasets have grown rather dramatically, while number of taxa has flattened off recently.
 
 
 ```r
@@ -311,13 +405,11 @@ rbind(neotoma_data %>% mutate(type = "data") %>% arrange(date),
   gp + facet_grid(type ~ ., scales="free")
 ```
 
-![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22-1.png) 
-
-## Gaps in open data
-
-This is more of a qualitative judgment, but ...
+![plot of chunk unnamed-chunk-20](assets/blog-images/2014-11-05-open-data-growth/unnamed-chunk-20-1.png) 
 
 ## Reproduce this
 
-* Option 1: If you are comfortable with git, simply clone the [dbgrowth repository](https://github.com/ropensci/dbgrowth) to your machine, uncompress the compressed file, `cd` to the directory, and run `R`. Running R should enter _packrat mode_, which will install packages from within the directory, after which point you can reproduce what we have done above.
+* Option 1: If you are comfortable with git, simply clone the [dbgrowth repository][thecode] to your machine, uncompress the compressed file, `cd` to the directory, and run `R`. Running R should enter _packrat mode_, which will install packages from within the directory, after which point you can reproduce what we have done above.
 * Option 2: Install the `packrat` R package if you don't have it already. Download the compressed file (a _packrat bundle_), then in R, run `packrat::unbundle("<path to tar.gz>", "<path to put the contents>")`, which will uncompress the file, and install packages, and you're ready to go.
+
+[thecode]: https://github.com/ropensci/dbgrowth

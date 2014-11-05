@@ -1,20 +1,38 @@
-dbgrowth analysis
-=================
+---
+name: open-data-growth
+layout: post
+title: Growth of open data in biology
+date: 2014-11-05
+authors: 
+  - name: Scott Chamberlain
+tags:
+- R
+- data
+---
 
 ```{r echo=FALSE}
 knitr::opts_chunk$set(
   comment = "#>",
   warning = FALSE,
   message = FALSE,
-  fig.path = "figure/"
+  fig.path = "assets/blog-images/2014-11-05-open-data-growth/",
+  fig.width = 10
 )
 ```
 
+## Why open data growth
+
+At rOpenSci we try to make it easier for people to use open data, and contribute open data to the community. The question often arises: How much open data do we have? Another angle on this topic is: How much is open data growing?
+
+We work with dozens of data sources in rOpenSci. We asked many of them to share numbers on the amount of data they have, and if possible, growth through time of their data holdings. Many of our partners came through with some data. Note that the below is biased towards those data sources we were able to get data from. In addition, note that much of the data we use below was from fall of 2013 (last year) - so the below is based on somewhat old data, but surely the patterns are likely the same.
+
+We collated data from the different sources, and made some pretty graphs using the data. Here's what we learned:
+
 ## Get data
 
-Load packages
+The code here is hidden for your sanity - see [the file][thecode] for the code and to run this yourself.
 
-```{r}
+```{r echo=FALSE}
 library('data.table')
 library('httr')
 library('httr')
@@ -24,13 +42,11 @@ library('lubridate')
 library('ggplot2')
 library('knitr')
 library('dplyr')
+library('rplos')
 ```
 
-Read in local files
-
-```{r}
+```{r echo=FALSE}
 dryad <- read.table("data/dryadSubmitDates.txt", col.names = 'submitdate', stringsAsFactors = FALSE)
-bef <- read.table("data/BEF_Datalast_modified_dump.csv", header = TRUE, sep = ",")
 npn <- read.table("data/records_per_month.csv", header = TRUE, sep = ",")
 treebase <- read.table("data/treebase.csv", header = TRUE, sep = ",")
 itis <- read.table("data/itis.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
@@ -47,39 +63,61 @@ bhl_names <- read.delim("data/bhl_names.csv", header = TRUE, sep = ",")
 bhl_pages <- read.delim("data/bhl_pages.csv", header = TRUE, sep = ",")
 gbif_data <- read.delim("data/gbif_data.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
 gbif_publishers <- read.delim("data/gbif_publishers.csv", header = FALSE, sep = ",", stringsAsFactors=FALSE)
-dcite <- read.csv('data/datacite.csv')
+dcite <- fread('data/datacite_new.csv', showProgress = FALSE, header = FALSE, sep = "\n", stringsAsFactors = FALSE, data.table = FALSE)
 ```
 
-Collect data from Neotoma and dbSNP. Executed and read in without echoing code.
-
-```{r child="neotoma_dbsnp.Rmd", echo=FALSE}
-print("See neotoma_dbsnp.Rmd")
-```
-
-Define vector of dataset names
-
-```{r}
-datasets2 <- c('dryad', 'bef', 'npn', 'treebase', 'itis', 'ebird_checklist', 'ebird_observations', 'col', 'opensnp_snps', 'opensnp_users','opensnp_genotypes', 'opensnp_phenotypes', 'bhl_titles', 'bhl_items', 'bhl_names', 'bhl_pages', 'gbif_data', 'gbif_publishers', 'dcite', 'neotoma_taxa', 'neotoma_datasets', 'neotoma_data', 'dbsnp_all')
+```{r child="other_data.Rmd", echo=FALSE}
+# Collect data from Neotoma and dbSNP. Executed and read in without echoing code.
+print("See other_data.Rmd")
 ```
 
 ## Size of open data
 
-```{r}
+Of the data sources we have data for, how much data is there? The expression of size of data is somewhat different for different sources, so the below is a bit heterogeous, but nonetheless coveys that there is a lot of open data.
+
+```{r calcnums, echo=FALSE}
+no_npn <- sum(npn$Number_Records)
+no_treebase <- treebase$New.Trees.Added[NROW(treebase)]
+no_itis <- itis$total_names[NROW(itis)]
+no_ebird_checklist <- ebird_checklist$COUNT.SUB_ID.[NROW(ebird_checklist)]
+no_ebird_observations <- ebird_observations$COUNT.OBS_ID.[NROW(ebird_observations)]
+no_col_species <- col$species[NROW(col)]
+no_col_source_dbs <- col$source_databases[NROW(col)]
+no_bhl_titles <- sum(bhl_titles$Titles)
+no_bhl_items <- sum(bhl_items$Items)
+no_bhl_names <- sum(bhl_names$Names)
+no_bhl_pages <- sum(bhl_pages$Pages)
+no_gbif_data <- gbif_data$`V2`[NROW(gbif_data)] * 10^6
+no_gbif_publishers <- round(gbif_publishers$`V2`[NROW(gbif_publishers)],0)
+no_neotoma_taxa <- neotoma_taxa$RunningCount[NROW(neotoma_taxa)]
+no_neotoma_data <- neotoma_data$RunningCount[NROW(neotoma_data)]
+no_neotoma_datasets <- neotoma_datasets$RunningCount[NROW(neotoma_datasets)]
+no_plos <- sum(plos_years$articles)
+df1 <- data.frame(source=c('npn','treebase','itis','ebird_checklist','ebird_observations','col_species','col_source_databases','bhl_titles','bhl_items','bhl_names','bhl_pages','gbif_data','gbif_publishers','neotoma_taxa','neotoma_data','neotoma_datasets','plos_articles'), value=c(no_npn, no_treebase, no_itis, no_ebird_checklist, no_ebird_observations, no_col_species, no_col_source_dbs, no_bhl_titles, no_bhl_items, no_bhl_names, no_bhl_pages, no_gbif_data, no_gbif_publishers, no_neotoma_taxa, no_neotoma_data, no_neotoma_datasets, no_plos))
+```
+
+```{r givenums1, echo=FALSE}
 calc <- function(x, func=NULL) func(eval(parse(text = x)))
-res <- ldply(sapply(datasets2, calc, func=NROW))
-names(res) <- c("source","value")
-res %>%
+df2 <- ldply(sapply(c('dryad','opensnp_snps', 'opensnp_users','opensnp_genotypes','dcite'), calc, func=NROW))
+names(df2) <- c("source","value")
+```
+
+```{r givenums2}
+rbind(df1, df2) %>%
+  mutate(
+    type = c('Phenology records','Phylogenetic trees','Taxonomic names','Checklist records','Observations','Taxonomic names','Source databases','Titles','Items','Names','Pages','Species occurrence records','Data publishers','Taxonomic names','Data records','Datasets','Articles','Data packages','SNPs','Users','Genotypes','Data records'),
+    source = c('NPN','Treebase','ITIS','eBird','eBird','COL','COL','BHL','BHL','BHL','BHL','GBIF','GBIF','Neotoma','Neotoma','Neotoma','PLOS','Dryad','OpenSNP','OpenSNP','OpenSNP','DataCite')
+  ) %>%
   arrange(desc(value)) %>%
-  kable
+  kable(format = "html")
 ```
 
 ## Growth in open data
 
-First, we have to convert all the date-like fields to proper date classes. 
+First, we have to convert all the date-like fields to proper date classes. The work is not shown - look at [the code][thecode] if you want the details.
 
-Some functions
-
-```{r}
+```{r echo=FALSE}
+# Some functions
 add0 <- function(x) if(nchar(x) == 1) paste0("0", x) else x
 yr_mo <- function(x){
   x <- x[ !x$Year == 0, ]
@@ -93,16 +131,15 @@ sort_count <- function(x){
 }
 gp <- function(x){
   ggplot(x, aes(date, count)) + 
-  geom_line() + 
+  geom_line(size = 3) + 
   theme_grey(base_size = 18)
 }
 ```
 
-Date conversions
 
-```{r}
+```{r echo=FALSE}
+# Date conversions
 dryad$date <- ymd_hms(dryad$submitdate)
-bef$date <- ymd_hms(bef$last.modified)
 npn$date <- ymd(apply(npn, 1, function(x) paste(x['year'], x['month'], "01", sep = "-")))
 treebase$date <- ymd(paste0(treebase$Year, "01-01"))
 itis$date <- myd(sapply(itis$date, function(y) paste0(y, "-01")))
@@ -118,28 +155,31 @@ bhl_names <- yr_mo(bhl_names)
 bhl_pages <- yr_mo(bhl_pages)
 gbif_data$date <- ymd(gbif_data$V1)
 gbif_publishers$date <- ymd(gbif_publishers$V1)
-dcite$date <- ymd_hms(dcite$uploaded)
+dcite$date <- ymd_hms(dcite$`V1`)
 neotoma_taxa <- yr_mo(neotoma_taxa)
 neotoma_datasets <- yr_mo(neotoma_datasets)
 neotoma_data <- yr_mo(neotoma_data)
-dbsnp_all$date <- ymd(paste0(dbsnp_all$year, "01-01"))
 ```
 
-### Visualize, counts by date
+## Run down of each data source
 
-#### Dryad 
+### Dryad
+
+* Website: http://datadryad.org/
+* R package: `rdryad`
+
+Dryad is a repository of datasets associated with published papers. We do have an R package on CRAN (`rdryad`), but it is waiting on an update for the new API services being built by the Dryad folks. We did recently add in access to their Solr endpoint - [check it out](https://github.com/ropensci/rdryad/blob/master/R/dryad_solr.r#L8-L41).
 
 ```{r}
 dryad %>% sort_count %>% gp
 ```
 
-#### BEF 
+### OpenSNP
 
-```{r}
-bef %>% sort_count %>% gp
-```
+* Website: https://opensnp.org/
+* R package: `rsnps`
 
-#### OpenSNP
+OpenSNP is a collator of SNP datasets that individuals donate to the site/database. They're an awesome group, and they even won the PLOS/Mendeley code contest a few years back. 
 
 ```{r}
 opensnp_genotypes <- opensnp_genotypes %>% mutate(type = "genotyptes") %>% sort_count
@@ -150,56 +190,105 @@ os_all <- rbind(opensnp_genotypes, opensnp_phenotypes, opensnp_snps, opensnp_use
 os_all %>%
   ggplot(aes(date, log10(count), color=type)) + 
     geom_line() + 
-    theme_grey(base_size = 18)
+    theme_grey(base_size = 18) + 
+    theme(legend.position = "top")
 ```
 
-#### Datacite
+### Datacite
 
-```{r}
+* Website: https://www.datacite.org/
+* R package: `rdatacite`
+
+DataCite mints DOIs for datasets, and holds metadata for those datasets provided by data publishers. They have 
+
+```{r cache=TRUE}
 dcite %>% sort_count %>% gp
 ```
 
-### Visualize, counts summarised previously by data provider
+### US National Phenology Network (USNPN or NPN)
 
-#### US National Phenology Network
+* Website: https://www.usanpn.org/
+* R package: `rnpn`
+
+The US National Phenology Network is a project under the USGS. They collect phenology observations across both plants and animals. 
 
 ```{r}
-npn %>% arrange(date) %>% rename(count = Number_Records) %>% gp
+npn %>% arrange(date) %>% mutate(count = cumsum(Number_Records)) %>% gp
 ```
 
-#### TreeBASE
+### TreeBASE
+
+* Website: http://treebase.org/
+* R package: `treebase`
+
+TreeBASE is a database of phylogenetic trees, had a total of `r treebase$New.Trees.Added[NROW(treebase)]` trees as of 2013, and has been growing at a good pace.
 
 ```{r}
 treebase %>% arrange(date) %>% rename(count = New.Trees.Added) %>% gp
 ```
 
-#### ITIS
+### Integrated Taxonomic Information Service (ITIS)
+
+* Website: http://www.itis.gov/
+* R package: `taxize`
+
+The ITIS database is under the USGS, and holds taxonomic names for mostly North American species. This dataset is interesting, because data goes back to 1977, when they had `r itis[1,'total_names']` names. As of Aug 2013 they had `r itis[NROW(itis),'total_names']` names.
 
 ```{r}
 itis %>% arrange(date) %>% rename(count = total_names) %>% gp
 ```
 
-#### eBird
+### eBird
+
+* Website: http://www.catalogueoflife.org/
+* R package: `taxize`
+
+eBird is a database of bird occurence records. They don't give access to all the data they have, but some recent data. Data growth goes up and down through time because we don't have access to all data on each data request, but the overall trend is increasing.
 
 ```{r}
-ebird_observations %>% arrange(date) %>% rename(count = COUNT.OBS_ID.) %>% gp
+ebird_observations %>% arrange(date) %>% mutate(count = cumsum(COUNT.OBS_ID.)) %>% gp
 ```
 
-#### Catalogue of Life
+### Catalogue of Life (COL)
 
-Number of species
+* Website: https://www.datacite.org/
+* R package: `rdatacite`
+
+COL is a database of taxonomic names, similar to ITIS, uBio, or Tropicos. The number of species (`r col$species[NROW(col)]`) has continually increased (the slight level off is because we got data in Oct last year before the year was over), but number of data sources (`r col$species[NROW(col)]`) was still growing as of 2013.
+
+__Number of species__
 
 ```{r}
 col %>% arrange(date) %>% rename(count = species) %>% gp
 ```
 
-Number of data sources
+__Number of data sources__
 
 ```{r}
 col %>% arrange(date) %>% rename(count = source_databases) %>% gp
 ```
 
-#### Biodiversity Heritage Library
+### Public Library of Science (PLOS)
+
+* Website: http://www.plos.org/
+* R package: `rplos`, `fulltext`
+
+PLOS has had tremendous growth, with a very steep hockey stick growth curve. This year (2014) is left out because the year is not over yet.
+
+```{r}
+plos_years %>% 
+  arrange(date) %>% 
+  filter(date < as.Date("2014-01-01")) %>% 
+  mutate(count = cumsum(articles)) %>% 
+  gp
+```
+
+### Biodiversity Heritage Library (BHL)
+
+* Website: http://www.biodiversitylibrary.org/
+* R package: `rbhl`
+
+BHL has grown tremendously, with `r sum(bhl_names$Names)` names, `r sum(bhl_pages$Pages)` pages, `r sum(bhl_items$Items)` items, and `r sum(bhl_titles$Titles)` titles.
 
 ```{r}
 bhl_titles <- bhl_titles %>% mutate(type = "titles") %>% arrange(date) %>% mutate(count = cumsum(Titles))
@@ -208,14 +297,20 @@ bhl_pages <- bhl_pages %>% mutate(type = "pages") %>% arrange(date) %>%  mutate(
 bhl_names <- bhl_names %>% mutate(type = "names") %>% arrange(date) %>%  mutate(count = cumsum(Names))
 bhl_all <- rbind(bhl_titles[,-c(1:4)], bhl_items[,-c(1:4)], bhl_pages[,-c(1:4)], bhl_names[,-c(1:4)])
 bhl_all %>%
-  ggplot(aes(date, count, color=type)) + 
-    geom_line() + 
-    theme_grey(base_size = 18)
+  ggplot(aes(date, count)) + 
+    geom_line(size=3) + 
+    theme_grey(base_size = 18) + 
+    facet_wrap(~ type, scales = "free")
 ```
 
-#### GBIF
+### Global Biodiversity Information Facility (GBIF)
 
-Number of records
+* Website: http://www.gbif.org/
+* R package: `rgbif`, `spocc`
+
+GBIF is the largest warehouse of biodiversity occurrence records, pulling in data from `r round(gbif_publishers[["V2"]][NROW(gbif_publishers)], 0)`, and `r round(gbif_data[["V2"]][NROW(gbif_data)], 0)` million occurrence records as of Oct. 2013. Growth through time has been dramatic.
+
+__Number of records__
 
 ```{r}
 gbif_data %>%
@@ -224,7 +319,7 @@ gbif_data %>%
   gp + labs(y="Millions of biodiversity records in GBIF")
 ```
 
-Number of data publishers
+__Number of data publishers__
 
 ```{r}
 gbif_publishers %>%
@@ -233,7 +328,12 @@ gbif_publishers %>%
   gp + labs(y="Number of GBIF data publishers")
 ```
 
-#### Neotoma
+### Neotoma
+
+* Website: http://www.neotomadb.org/
+* R package: `neotoma`
+
+The Neotoma database holds paleoecology records of various kinds, including pollen and fossil records. The R package `neotoma` allows access to data from Neotoma.  Data and datasets have grown rather dramatically, while number of taxa has flattened off recently.
 
 ```{r}
 rbind(neotoma_data %>% mutate(type = "data") %>% arrange(date),
@@ -243,11 +343,9 @@ rbind(neotoma_data %>% mutate(type = "data") %>% arrange(date),
   gp + facet_grid(type ~ ., scales="free")
 ```
 
-## Gaps in open data
-
-This is more of a qualitative judgment, but ...
-
 ## Reproduce this
 
-* Option 1: If you are comfortable with git, simply clone the [dbgrowth repository](https://github.com/ropensci/dbgrowth) to your machine, uncompress the compressed file, `cd` to the directory, and run `R`. Running R should enter _packrat mode_, which will install packages from within the directory, after which point you can reproduce what we have done above.
+* Option 1: If you are comfortable with git, simply clone the [dbgrowth repository][thecode] to your machine, uncompress the compressed file, `cd` to the directory, and run `R`. Running R should enter _packrat mode_, which will install packages from within the directory, after which point you can reproduce what we have done above.
 * Option 2: Install the `packrat` R package if you don't have it already. Download the compressed file (a _packrat bundle_), then in R, run `packrat::unbundle("<path to tar.gz>", "<path to put the contents>")`, which will uncompress the file, and install packages, and you're ready to go.
+
+[thecode]: https://github.com/ropensci/dbgrowth
