@@ -1,8 +1,5 @@
-Open science database growth analysis
-========
+# dbgrowth
 
-This repo holds data, analysis for a blog post for the [rOpenSci blog](http://ropensci.org/blog) about the growth of open data sets in science, mostly ecology.
+[![Project Status: Abandoned](https://www.repostatus.org/badges/latest/abandoned.svg)](https://www.repostatus.org/#abandoned)
 
-Read the post: <https://ropensci.org/blog/2014/11/10/open-data-growth/>
-
-
+This repository has been archived. The former README is now in [README-NOT.md](README-NOT.md).
